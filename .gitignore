@@ -1,0 +1,9 @@
+# Binaries
+*.exe
+*.dll
+
+# Temporary Files
+submission.cpp
+
+# IDE Configs (Optional but good)
+.idea/
