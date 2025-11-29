@@ -1,43 +1,66 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 )
 
-func main() {
-	cppCode := "#include <iostream>\nint main(){ std::cout <<\"Hello Forge\";return 0;}"
-	err := os.WriteFile("submission.cpp", []byte(cppCode), 0644) //Go demands this.
-	//What is it? This is a Unix Permission Code (Octal).
-	//6 (Owner): Read + Write.
-	//4 (Group): Read only.
-	//4 (Everyone): Read only.
-	if err != nil {
-		fmt.Println("Error writing file: ", err)
+type Submission struct {
+	Code string `json:"code"`
+}
+
+func submitHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		//Send 405 NOT ALLOWED
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	fmt.Println("File Saved Sucessfully!")
+	//Create a variable of my struct
+	var sub = Submission{}                      // Easy way to understand is to Create a Bucket
+	err := json.NewDecoder(r.Body).Decode(&sub) // Attach a hose for controlled release of water into the bucket
+	//err := decoder.Decode(&sub)    // Fill the bucket, using & pass by ref fills the memory of the bucket
+	if err != nil {
+		http.Error(w, "Bad Json", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("Received Code, Processing")
+	result := processSubmission(sub.Code)
+	fmt.Fprintf(w, result)
+}
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Check Received")
+	fmt.Fprintf(w, "System Operational")
+}
+
+func main() {
+	fmt.Println("Starting on :3000...")
+	http.HandleFunc("/health", healthHandler)
+	http.HandleFunc("/submit", submitHandler)
+	http.ListenAndServe(":3000", nil)
+
+}
+
+func processSubmission(code string) string {
+	//Write File
+	err := os.WriteFile("submission.cpp", []byte(code), 0644)
+	if err != nil {
+		return "Failed to Write" + err.Error()
+	}
+	//Compile File
 	cmd := exec.Command("g++", "submission.cpp", "-o", "submission.exe")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println("Compilation Failed!")
-		fmt.Println(string(output))
-		return
+		return "Compilation Failed!:\n" + string(output)
 	}
-	fmt.Println("Binary Built Sucessfully!")
-	// ... Binary Built Successfully ...
-	fmt.Println("Running the Binary...")
-	//Now running the .Exe file
+	//Run the file
 	runCmd := exec.Command("./submission.exe")
-	//Run it now
 	runOutput, runErr := runCmd.CombinedOutput()
-	//Runtime Errors
 	if runErr != nil {
-		fmt.Println("Runtime error!")
-		fmt.Println(string(runOutput))
+		return "Runtime Error: \n" + string(runOutput)
 	}
-	//Success
-	fmt.Println("Output Sucessful: ")
-	fmt.Println(string(runOutput))
+	return string(runOutput)
 }
