@@ -1,11 +1,14 @@
 package main
 
 import (
+	"Forge/sandbox"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
+	"time"
 )
 
 type Submission struct {
@@ -37,6 +40,23 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	fmt.Println("Starting Docker Client....")
+	//Intializing the Sandbox
+	dockerClient, err := sandbox.NewClient()
+	if err != nil {
+		//If Docker Down Crash the app immediately cuz useless without it
+		panic(err)
+	}
+	defer dockerClient.Close() //Always Close connections in MAIN
+	//Test The connection we built in the Sandbox
+	//We give Docker 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err = dockerClient.Ping(ctx)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Docker Connected Successfully! 🐳")
 	fmt.Println("Starting on :3000...")
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/submit", submitHandler)
