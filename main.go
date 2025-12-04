@@ -58,6 +58,19 @@ func main() {
 	}
 	fmt.Println("Docker Connected Successfully! 🐳")
 	fmt.Println("Starting on :3000...")
+	fmt.Println("Verifying the Sandbox Image....")
+	if err := dockerClient.EnsureImage(ctx, "forge-cpp-runner"); err != nil {
+		panic(err)
+	}
+	fmt.Println("Sandbox Image Found!")
+	fmt.Println("Testing Sandbox Execution")
+	cmd := []string{"echo", "Hello Abhinav from Inside the Docker Container!"}
+	output, err := dockerClient.RunContainer(ctx, "forge-cpp-runner", cmd)
+	if err != nil {
+		panic(err)
+	}
+	//Verifying the output
+	fmt.Printf("\n >>>>CONTAINER OUTPUT: %s\n", string(output))
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/submit", submitHandler)
 	http.ListenAndServe(":3000", nil)
