@@ -20,11 +20,12 @@ Designed to safely compile and execute untrusted user code in a sandboxed enviro
     * Implemented JSON Marshaling/Unmarshaling.
     * Added strict Method Guards (POST only).
 
-### 🐳 Phase 3: The Sandbox (🚧 In Progress)
+### 🐳 Phase 3: The Sandbox (✅ Completed)
 * **Level 3: Docker Isolation**
-    * Integrate Docker SDK.
-    * Spin up ephemeral Alpine containers for every job.
-    * Implement memory/CPU resource limits.
+    * Integrated Docker SDK Client.
+    * Implemented Container Lifecycle (Create -> Start -> Wait -> Destroy).
+    * Built "Teleporter" to stream in-memory C++ code using TAR archives.
+    * Connected HTTP API to Docker Engine (Dependency Injection).
 
 ### ⚡ Phase 4: High-Performance (Next)
 * **Level 4: Concurrency Engine**
