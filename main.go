@@ -64,13 +64,23 @@ func main() {
 	}
 	fmt.Println("Sandbox Image Found!")
 	fmt.Println("Testing Sandbox Execution")
-	cmd := []string{"echo", "Hello Abhinav from Inside the Docker Container!"}
-	output, err := dockerClient.RunContainer(ctx, "forge-cpp-runner", cmd)
+	fmt.Println("Testing Sandbox Execution(C++ Compilation)...")
+	code := `
+	#include <iostream>
+	int main() {
+		std::cout << "SUCCESS! The Forge is running C++." << std::endl;
+		std::cout << "Math Check: 10 + 10 = " << (10+10) << std::endl;
+		return 0;
+	}
+	` //We Use Backticks to write multi string level codes
+	output, err := dockerClient.RunContainer(ctx, "forge-cpp-runner", code)
 	if err != nil {
 		panic(err)
 	}
 	//Verifying the output
-	fmt.Printf("\n >>>>CONTAINER OUTPUT: %s\n", string(output))
+	fmt.Printf("\n >>>>CONTAINER OUTPUT: \n%s\n", string(output))
+	//----------------------------------------------------
+
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/submit", submitHandler)
 	http.ListenAndServe(":3000", nil)
