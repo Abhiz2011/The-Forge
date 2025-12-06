@@ -27,6 +27,14 @@ Designed to safely compile and execute untrusted user code in a sandboxed enviro
     * Built "Teleporter" to stream in-memory C++ code using TAR archives.
     * Connected HTTP API to Docker Engine (Dependency Injection).
 
+## 🏗️ Architecture (Phase 3)
+
+![System Architecture](./assets/phase3_architecture.png)
+
+*Current Architecture: The API (Receptionist) is decoupled from the Sandbox (Engine) via Dependency Injection. Code is streamed into isolated Alpine containers using in-memory TAR streams.*
+
+---
+
 ### ⚡ Phase 4: High-Performance (Next)
 * **Level 4: Concurrency Engine**
     * Implement Worker Pools using Goroutines.
