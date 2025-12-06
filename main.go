@@ -1,109 +1,47 @@
 package main
 
 import (
+	"Forge/api"
 	"Forge/sandbox"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"os/exec"
 	"time"
 )
 
-type Submission struct {
-	Code string `json:"code"`
-}
-
-func submitHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		//Send 405 NOT ALLOWED
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	//Create a variable of my struct
-	var sub = Submission{}                      // Easy way to understand is to Create a Bucket
-	err := json.NewDecoder(r.Body).Decode(&sub) // Attach a hose for controlled release of water into the bucket
-	//err := decoder.Decode(&sub)    // Fill the bucket, using & pass by ref fills the memory of the bucket
-	if err != nil {
-		http.Error(w, "Bad Json", http.StatusBadRequest)
-		return
-	}
-
-	fmt.Println("Received Code, Processing")
-	result := processSubmission(sub.Code)
-	fmt.Fprintf(w, result)
-}
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Check Received")
-	fmt.Fprintf(w, "System Operational")
-}
-
 func main() {
-	fmt.Println("Starting Docker Client....")
-	//Intializing the Sandbox
+	fmt.Println("🔥 The Forge is starting up...")
+	//1. Intialzing the Docker Engine
+	fmt.Println("1. Connecting to the Docker Engine...")
 	dockerClient, err := sandbox.NewClient()
 	if err != nil {
-		//If Docker Down Crash the app immediately cuz useless without it
-		panic(err)
+		panic(err) // IF docker down , I cannot run this
 	}
-	defer dockerClient.Close() //Always Close connections in MAIN
-	//Test The connection we built in the Sandbox
-	//We give Docker 5 seconds
+	defer dockerClient.Close()
+	//2. Performing a health check on Docker
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err = dockerClient.Ping(ctx)
-	if err != nil {
+	if err := dockerClient.Ping(ctx); err != nil {
 		panic(err)
 	}
-	fmt.Println("Docker Connected Successfully! 🐳")
-	fmt.Println("Starting on :3000...")
-	fmt.Println("Verifying the Sandbox Image....")
+	fmt.Println("   >> Docker Connected! 🐳")
+	//3. Ensure the image Exists
 	if err := dockerClient.EnsureImage(ctx, "forge-cpp-runner"); err != nil {
 		panic(err)
 	}
-	fmt.Println("Sandbox Image Found!")
-	fmt.Println("Testing Sandbox Execution")
-	fmt.Println("Testing Sandbox Execution(C++ Compilation)...")
-	code := `
-	#include <iostream>
-	int main() {
-		std::cout << "SUCCESS! The Forge is running C++." << std::endl;
-		std::cout << "Math Check: 10 + 10 = " << (10+10) << std::endl;
-		return 0;
+	fmt.Println("   >> Sandbox Image Verified! ✅")
+
+	//4. Dependency Injection
+	forgeAPI := &api.API{
+		Sandbox: dockerClient,
 	}
-	` //We Use Backticks to write multi string level codes
-	output, err := dockerClient.RunContainer(ctx, "forge-cpp-runner", code)
-	if err != nil {
+	//5. Starting the HTTP Server
+	fmt.Println("2. Starting API Server on port :3000...")
+
+	//Now using the methods from our new ForgeAPI Struct
+	http.HandleFunc("/health", forgeAPI.HealthHandler)
+	http.HandleFunc("/submit", forgeAPI.SubmitHandler)
+	if err := http.ListenAndServe(":3000", nil); err != nil {
 		panic(err)
 	}
-	//Verifying the output
-	fmt.Printf("\n >>>>CONTAINER OUTPUT: \n%s\n", string(output))
-	//----------------------------------------------------
-
-	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/submit", submitHandler)
-	http.ListenAndServe(":3000", nil)
-
-}
-
-func processSubmission(code string) string {
-	//Write File
-	err := os.WriteFile("submission.cpp", []byte(code), 0644)
-	if err != nil {
-		return "Failed to Write" + err.Error()
-	}
-	//Compile File
-	cmd := exec.Command("g++", "submission.cpp", "-o", "submission.exe")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "Compilation Failed!:\n" + string(output)
-	}
-	//Run the file
-	runCmd := exec.Command("./submission.exe")
-	runOutput, runErr := runCmd.CombinedOutput()
-	if runErr != nil {
-		return "Runtime Error: \n" + string(runOutput)
-	}
-	return string(runOutput)
 }
